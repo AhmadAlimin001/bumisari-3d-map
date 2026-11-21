@@ -1,0 +1,25 @@
+{
+  "name": "Bumisari 3D Map",
+  "short_name": "Bumisari 3D",
+  "description": "Peta 3D interaktif Desa Bumisari, Mantewe, Tanah Bumbu.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#071522",
+  "theme_color": "#0b2238",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

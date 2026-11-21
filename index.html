@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#0b2238">
+  <meta name="description" content="Peta 3D interaktif Desa Bumisari, Kecamatan Mantewe, Tanah Bumbu.">
+  <title>Bumisari 3D Map</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Widgets/widgets.css">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.124/Build/Cesium/Cesium.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#081827;--panel:rgba(9,27,44,.94);--line:#ffffff20;--blue:#0284c7;--muted:#a9bfd2}
+    *{box-sizing:border-box}
+    html,body,#map{width:100%;height:100%;margin:0;overflow:hidden;font-family:system-ui,Arial,sans-serif;background:#071522}
+    #map{position:absolute;inset:0}
+    .top{position:absolute;z-index:5;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;pointer-events:none}
+    .brand,.pill{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:10px 12px;backdrop-filter:blur(12px);box-shadow:0 6px 20px #0005;pointer-events:auto}
+    .brand b{display:block;font-size:14px;letter-spacing:.3px}.brand small{color:var(--muted);font-size:10px}
+    .pill{font-size:10px;color:#d9e8f4;max-width:45%;text-align:right}
+    .panel{position:absolute;z-index:5;top:78px;left:10px;bottom:12px;width:min(320px,calc(100vw - 20px));overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;color:#f1f7fc;backdrop-filter:blur(14px);box-shadow:0 12px 32px #0007;transition:transform .2s}
+    .panel.closed{transform:translateX(calc(-100% - 16px))}
+    h2{font-size:13px;margin:0 0 10px}
+    label{display:block;font-size:11px;color:#c2d4e3;margin:9px 0 5px}
+    input,button{font:inherit;border-radius:9px}
+    input{width:100%;padding:10px;background:#102a41;border:1px solid var(--line);color:white;font-size:12px}
+    button{border:0;padding:10px 11px;background:var(--blue);color:white;font-size:12px;font-weight:650;cursor:pointer}
+    button.secondary{background:#243d53}button:disabled{opacity:.45}
+    .full{width:100%;margin-top:8px}
+    .row{display:flex;gap:7px}.row>*{flex:1;min-width:0}
+    .section{border-top:1px solid var(--line);margin-top:13px;padding-top:13px}
+    .hint{font-size:10px;color:var(--muted);line-height:1.5;margin:7px 0 0}
+    #msg{font-size:10px;line-height:1.5;color:#bae6fd;overflow-wrap:anywhere;margin-top:10px;min-height:20px}
+    #toggle{position:absolute;z-index:7;left:10px;top:78px;width:42px;height:42px;padding:0;border:1px solid var(--line);background:var(--panel);border-radius:12px;font-size:19px}
+    .panel:not(.closed)~#toggle{left: min(340px, calc(100vw - 58px))}
+    .credit{position:absolute;z-index:4;bottom:7px;right:8px;padding:5px 8px;border-radius:7px;background:#061522c9;color:#d6e3ed;font-size:9px}
+    .walkpad{display:none;position:absolute;z-index:6;right:14px;bottom:35px;gap:5px;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px)}
+    .walkpad.active{display:grid}.walkpad button{padding:0;border-radius:12px;background:#0b3555dd;border:1px solid #ffffff40;font-size:18px;touch-action:none}
+    .walkpad .up{grid-column:2}.walkpad .left{grid-column:1;grid-row:2}.walkpad .down{grid-column:2;grid-row:2}.walkpad .right{grid-column:3;grid-row:2}
+    @media(max-width:520px){.panel{width:min(300px,calc(100vw - 20px));top:70px;bottom:8px}.top{top:7px;left:7px;right:7px}.brand{padding:8px 10px}.brand b{font-size:12px}.pill{font-size:9px}.credit{bottom:5px}.walkpad{right:10px;bottom:28px}}
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<header class="top">
+  <div class="brand"><b>🛰️ BUMISARI 3D MAP</b><small>Digital Twin Desa • Mantewe</small></div>
+  <div class="pill" id="state">Peta dasar aktif</div>
+</header>
+<aside class="panel" id="panel">
+  <h2>Jelajahi Desa Bumisari</h2>
+  <label for="api">Google Maps Platform API Key</label>
+  <input id="api" type="password" placeholder="Tempel API key di sini" autocomplete="off">
+  <button class="full" id="activate">Aktifkan citra 3D Google</button>
+  <p class="hint">API key digunakan di browser. Batasi key berdasarkan domain GitHub Pages dan API Map Tiles. Jangan membagikan key kepada orang lain.</p>
+
+  <div class="section">
+    <h2>Lokasi Desa Bumisari</h2>
+    <div class="row">
+      <div><label for="lat">Latitude</label><input id="lat" value="-3.268322" inputmode="decimal"></div>
+      <div><label for="lon">Longitude</label><input id="lon" value="115.812563" inputmode="decimal"></div>
+    </div>
+    <button class="full" id="go">Menuju pusat desa</button>
+    <button class="full secondary" id="overview">Lihat dari ketinggian</button>
+  </div>
+
+  <div class="section">
+    <h2>Navigasi</h2>
+    <button class="full" id="orbit">Mode kamera orbit</button>
+    <button class="full secondary" id="walk">Mode berjalan (uji awal)</button>
+    <p class="hint">Geser satu jari untuk menggeser/menjelajah peta dan gunakan dua jari untuk zoom/rotasi. Mode berjalan memakai tombol arah di layar; belum memiliki tabrakan dengan bangunan.</p>
+  </div>
+
+  <div class="section">
+    <h2>Data bangunan (tahap berikutnya)</h2>
+    <p class="hint">Versi awal ini belum memuat model rumah atau batas administrasi. Nantinya data GeoJSON dan model GLB akan ditambahkan setelah survei dan pemetaan.</p>
+  </div>
+  <div id="msg">Peta dasar siap. Untuk citra 3D fotorealistik, masukkan API key Google.</div>
+</aside>
+<button id="toggle" aria-label="Buka/tutup menu">☰</button>
+<div class="walkpad" id="walkpad">
+  <button class="up" data-move="forward">▲</button>
+  <button class="left" data-move="left">◀</button>
+  <button class="down" data-move="back">▼</button>
+  <button class="right" data-move="right">▶</button>
+</div>
+<div class="credit">Google 3D Tiles (jika diaktifkan) • CesiumJS • OpenStreetMap</div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const village = {lon:115.812563, lat:-3.268322};
+  let tileset = null, walking = false;
+  const say = t => $('msg').textContent = t;
+  const viewer = new Cesium.Viewer('map', {
+    animation:false,timeline:false,baseLayerPicker:false,geocoder:false,
+    homeButton:false,sceneModePicker:false,navigationHelpButton:false,
+    fullscreenButton:true,infoBox:false,selectionIndicator:false,
+    imageryProvider:new Cesium.OpenStreetMapImageryProvider({url:'https://tile.openstreetmap.org/'}),
+    terrainProvider:new Cesium.EllipsoidTerrainProvider(),
+    scene3DOnly:true
+  });
+  viewer.scene.screenSpaceCameraController.enableCollisionDetection = false;
+  viewer.camera.setView({
+    destination:Cesium.Cartesian3.fromDegrees(village.lon,village.lat,2400),
+    orientation:{heading:0,pitch:Cesium.Math.toRadians(-48),roll:0}
+  });
+
+  $('activate').onclick = async () => {
+    const key = $('api').value.trim();
+    if(!key){say('Masukkan API key Google terlebih dahulu.');return;}
+    $('state').textContent='Memuat citra 3D…';
+    say('Menghubungkan ke Google Photorealistic 3D Tiles…');
+    try{
+      if(tileset) viewer.scene.primitives.remove(tileset);
+      const url='https://tile.googleapis.com/v1/3dtiles/root.json?key='+encodeURIComponent(key);
+      tileset=await Cesium.Cesium3DTileset.fromUrl(url,{showCreditsOnScreen:true});
+      viewer.scene.primitives.add(tileset);
+      $('state').textContent='Citra 3D aktif';
+      say('Citra 3D berhasil dimuat. Jika detail bangunan tidak muncul, kemungkinan wilayah belum memiliki cakupan 3D fotorealistik.');
+    }catch(err){
+      $('state').textContent='Citra 3D belum aktif';
+      say('Tidak berhasil memuat 3D. Periksa API key, billing, Map Tiles API, pembatasan domain, dan koneksi internet. '+err.message);
+      console.error(err);
+    }
+  };
+  $('go').onclick=()=>{
+    const lat=Number($('lat').value),lon=Number($('lon').value);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){say('Koordinat tidak valid.');return;}
+    viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(lon,lat,1000),orientation:{heading:0,pitch:Cesium.Math.toRadians(-48),roll:0},duration:2});
+  };
+  $('overview').onclick=()=>viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(village.lon,village.lat,12000),orientation:{heading:0,pitch:Cesium.Math.toRadians(-65),roll:0},duration:2});
+  $('orbit').onclick=()=>{walking=false;$('walkpad').classList.remove('active');viewer.scene.screenSpaceCameraController.enableRotate=true;viewer.scene.screenSpaceCameraController.enableTilt=true;say('Mode kamera orbit aktif.');};
+  $('walk').onclick=()=>{
+    walking=true;$('walkpad').classList.add('active');
+    viewer.scene.screenSpaceCameraController.enableRotate=false;
+    viewer.scene.screenSpaceCameraController.enableTilt=false;
+    const c=viewer.camera;
+    c.setView({orientation:{heading:c.heading,pitch:Cesium.Math.toRadians(-8),roll:0}});
+    say('Mode berjalan uji awal aktif. Gunakan tombol arah di kanan bawah.');
+  };
+  document.querySelectorAll('[data-move]').forEach(btn=>{
+    const move=()=>{
+      if(!walking)return;
+      const c=viewer.camera, step=8;
+      const m=btn.dataset.move;
+      if(m==='forward')c.moveForward(step);
+      if(m==='back')c.moveBackward(step);
+      if(m==='left')c.moveLeft(step);
+      if(m==='right')c.moveRight(step);
+    };
+    let interval;
+    btn.addEventListener('pointerdown',e=>{e.preventDefault();move();interval=setInterval(move,90);});
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>btn.addEventListener(ev,()=>clearInterval(interval)));
+  });
+  $('toggle').onclick=()=>{$('panel').classList.toggle('closed');};
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn));
+  }
+})();
+</script>
+</body>
+</html>
