@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#0b1830">
+  <title>BUMISARI 3D MAP</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link href="https://unpkg.com/maplibre-gl@6.19.0/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@6.19.0/dist/maplibre-gl.js"></script>
+  <style>
+    :root{color-scheme:dark;--panel:#101f38;--line:#29415f;--blue:#20a5e9}
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:Arial,sans-serif;background:#081426;color:#fff}
+    #map{position:absolute;inset:0}
+    .brand{position:absolute;z-index:5;top:14px;left:14px;background:#10243eeF;border:1px solid #34516e;border-radius:14px;padding:11px 15px;box-shadow:0 8px 25px #0006}
+    .brand b{display:block;font-size:14px;letter-spacing:.4px}.brand small{display:block;color:#b7c9dc;font-size:10px;margin-top:4px}
+    .panel{position:absolute;z-index:5;top:14px;left:14px;bottom:14px;width:300px;max-width:calc(100vw - 28px);overflow:auto;background:#0d1c32f2;border:1px solid #34516e;border-radius:16px;padding:16px;box-shadow:0 12px 35px #0007;backdrop-filter:blur(12px);transition:transform .25s}
+    .panel h2{font-size:15px;margin:72px 0 14px}.panel p{font-size:11px;line-height:1.5;color:#b8c9dc}
+    .section{border-top:1px solid #29415f;padding-top:13px;margin-top:14px}
+    .section h3{font-size:12px;margin:0 0 10px;color:#e9f4ff}
+    label{display:block;font-size:10px;color:#b8c9dc;margin:9px 0 5px}
+    input{width:100%;background:#172d49;border:1px solid #355474;color:white;border-radius:9px;padding:10px;font-size:12px}
+    button{border:0;border-radius:9px;background:var(--blue);color:white;font-weight:700;padding:11px 12px;font-size:11px;cursor:pointer}
+    button.secondary{background:#29435f}button:active{transform:scale(.98)}
+    .wide{width:100%;margin-top:8px}.coords{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .menu{position:absolute;z-index:6;top:14px;left:326px;border:1px solid #45617e;background:#10243e;color:#fff;border-radius:10px;padding:11px 14px;font-size:17px;display:none}
+    .status{font-size:10px;color:#9fc7e8;margin-top:10px;line-height:1.5}
+    .maplibregl-ctrl-group{background:#10243e!important}.maplibregl-ctrl-group button{background-color:#10243e!important}
+    .maplibregl-ctrl-attrib{color:#111!important}
+    @media(max-width:650px){.panel{width:280px;top:10px;bottom:10px;left:10px}.menu{display:block;left:300px;top:10px}.brand{display:none}.panel.closed{transform:translateX(calc(-100% - 20px))}.panel h2{margin-top:8px}}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="brand"><b>🌐 BUMISARI 3D MAP</b><small>Digital Twin Desa • Mantewe</small></div>
+  <button class="menu" id="menuBtn" aria-label="Buka atau tutup menu">☰</button>
+  <aside class="panel" id="panel">
+    <h2>Jelajahi Desa Bumisari</h2>
+    <p>Peta interaktif berbasis OpenStreetMap. Tampilan bangunan 3D muncul jika data bangunan tersedia pada area yang dilihat.</p>
+    <div class="section">
+      <h3>Lokasi Desa Bumisari</h3>
+      <div class="coords">
+        <div><label>Latitude</label><input id="lat" value="-3.268322" inputmode="decimal"></div>
+        <div><label>Longitude</label><input id="lng" value="115.812563" inputmode="decimal"></div>
+      </div>
+      <button class="wide" id="goBtn">Menuju lokasi desa</button>
+      <button class="wide secondary" id="topBtn">Lihat dari atas</button>
+    </div>
+    <div class="section">
+      <h3>Navigasi 3D</h3>
+      <button class="wide" id="tiltBtn">Tampilan 3D / Miringkan</button>
+      <button class="wide secondary" id="rotateBtn">Putar peta</button>
+      <button class="wide secondary" id="resetBtn">Kembali ke posisi awal</button>
+      <p>Gunakan mouse untuk menggeser peta. Scroll untuk zoom. Tahan tombol kanan mouse sambil menggeser untuk mengubah sudut pandang. Di HP, gunakan dua jari untuk memiringkan dan memutar.</p>
+    </div>
+    <div class="section">
+      <h3>Data bangunan</h3>
+      <p>Bangunan yang terlihat berasal dari OpenStreetMap. Data bangunan yang belum dipetakan belum akan muncul. Tahap berikutnya adalah menambahkan batas desa, jalan, fasilitas umum, dan model bangunan hasil survei lapangan.</p>
+    </div>
+    <div class="section">
+      <h3>Status peta</h3>
+      <div class="status" id="status">Memuat peta…</div>
+      <p>© OpenStreetMap contributors • Peta disediakan OpenFreeMap</p>
+    </div>
+  </aside>
+<script>
+(() => {
+  const CENTER = [115.812563, -3.268322];
+  const styleUrl = 'https://tiles.openfreemap.org/styles/liberty';
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: styleUrl,
+    center: CENTER,
+    zoom: 15.2,
+    pitch: 58,
+    bearing: -18,
+    maxPitch: 85,
+    hash: false
+  });
+  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'top-right');
+  map.addControl(new maplibregl.ScaleControl({unit:'metric'}), 'bottom-left');
+  const status = document.getElementById('status');
+
+  map.on('load', () => {
+    // Tambahkan sumber bangunan OpenStreetMap untuk ekstrusi 3D.
+    if (!map.getSource('openfreemap-buildings')) {
+      map.addSource('openfreemap-buildings', {
+        type: 'vector',
+        url: 'https://tiles.openfreemap.org/planet'
+      });
+    }
+    const layers = map.getStyle().layers || [];
+    const labelLayer = layers.find(l => l.type === 'symbol' && l.layout && l.layout['text-field']);
+    map.addLayer({
+      id: 'bumisari-3d-buildings',
+      source: 'openfreemap-buildings',
+      'source-layer': 'building',
+      type: 'fill-extrusion',
+      minzoom: 14,
+      filter: ['!=', ['get', 'hide_3d'], true],
+      paint: {
+        'fill-extrusion-color': '#b8c7d8',
+        'fill-extrusion-height': [
+          'interpolate', ['linear'], ['zoom'],
+          14, 0, 16, ['coalesce', ['get', 'render_height'], 8]
+        ],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.88
+      }
+    }, labelLayer ? labelLayer.id : undefined);
+    new maplibregl.Marker({color:'#13b7e8'}).setLngLat(CENTER).setPopup(new maplibregl.Popup().setText('Pusat koordinat Desa Bumisari')).addTo(map);
+    status.textContent = 'Peta berhasil dimuat. Periksa ketersediaan data bangunan 3D dengan memperbesar peta.';
+  });
+  map.on('error', e => {
+    if (e && e.error) status.textContent = 'Ada kendala memuat sebagian data peta. Periksa koneksi internet lalu muat ulang halaman.';
+  });
+  document.getElementById('goBtn').onclick = () => {
+    const lat = Number(document.getElementById('lat').value);
+    const lng = Number(document.getElementById('lng').value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat)>90 || Math.abs(lng)>180) {
+      status.textContent = 'Koordinat tidak valid. Periksa nilai latitude dan longitude.'; return;
+    }
+    map.flyTo({center:[lng,lat],zoom:16,pitch:58,bearing:map.getBearing(),essential:true});
+  };
+  document.getElementById('topBtn').onclick = () => map.easeTo({pitch:0,bearing:0,zoom:15,duration:900});
+  document.getElementById('tiltBtn').onclick = () => map.easeTo({pitch:map.getPitch()>25?0:60,bearing:map.getBearing(),duration:900});
+  document.getElementById('rotateBtn').onclick = () => map.easeTo({bearing:map.getBearing()+90,pitch:60,duration:1000});
+  document.getElementById('resetBtn').onclick = () => map.flyTo({center:CENTER,zoom:15.2,pitch:58,bearing:-18,essential:true});
+  document.getElementById('menuBtn').onclick = () => document.getElementById('panel').classList.toggle('closed');
+  if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+})();
+</script>
+</body>
+</html>
